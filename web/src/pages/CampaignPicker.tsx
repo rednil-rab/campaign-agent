@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Button } from '@questkeeper/theme';
 import { useChatStore } from '../store/chat';
 import { api, errorMessage, isUnauthorized } from '../api/client';
 
@@ -33,21 +34,23 @@ export const CampaignPicker: React.FC = () => {
     navigate('/', { replace: true });
   };
 
-  if (loading) return <div className="campaign-picker"><p>Loading campaigns…</p></div>;
+  if (loading) return <main className="campaign-picker"><p className="muted">Loading campaigns…</p></main>;
 
   return (
-    <div className="campaign-picker">
-      <h1>Select a campaign</h1>
+    <main className="campaign-picker">
+      <h1 className="page-title">Select a campaign</h1>
       {error && <p role="alert" className="error">{error}</p>}
-      {!error && campaigns.length === 0 && <p>No campaigns found. Create one in Questkeeper first.</p>}
+      {!error && campaigns.length === 0 && <p className="muted">No campaigns found. Create one in Questkeeper first.</p>}
       <div className="campaign-list">
         {campaigns.map((c) => (
-          <button key={c.id} className="campaign-card" onClick={() => open(c.id)}>
-            <h2>{c.name}</h2>
+          <button key={c.id} type="button" className="panel campaign-card" onClick={() => open(c.id)}>
+            <span className="panel__title">{c.name}</span>
           </button>
         ))}
       </div>
-      <button className="link-button" onClick={signOut}>Sign out</button>
-    </div>
+      <div>
+        <Button variant="ghost" onClick={signOut}>Sign out</Button>
+      </div>
+    </main>
   );
 };

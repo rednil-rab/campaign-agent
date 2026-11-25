@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Button } from '@questkeeper/theme';
 import { useChatStore } from '../store/chat';
 import { api, errorMessage, isUnauthorized } from '../api/client';
 
@@ -32,6 +33,7 @@ export const MessageInput: React.FC<{ campaignId: string }> = ({ campaignId }) =
   return (
     <form onSubmit={submit} className="message-input">
       <input
+        className="input"
         type="text"
         value={content}
         onChange={(e) => setContent(e.target.value)}
@@ -40,7 +42,7 @@ export const MessageInput: React.FC<{ campaignId: string }> = ({ campaignId }) =
         aria-label="Message"
         disabled={loading}
       />
-      <button type="submit" disabled={loading || !content.trim()}>{loading ? 'Thinking…' : 'Send'}</button>
+      <Button type="submit" disabled={loading || !content.trim()}>{loading ? 'Thinking…' : 'Send'}</Button>
       {error && <p role="alert" className="error">{error}</p>}
     </form>
   );

@@ -5,6 +5,7 @@ import { createAuthRouter } from './api/auth';
 import { createChatRouter, type ChatDeps } from './api/chat';
 import { createHealthRouter } from './api/health';
 import { HttpError } from './errors';
+import { SESSION_COOKIE } from './middleware/auth';
 
 export function createApp(deps: ChatDeps): Express {
   const app = express();
@@ -28,8 +29,12 @@ export function createApp(deps: ChatDeps): Express {
     app.get(/^(?!\/api\/).*/, (_req, res) => res.sendFile(path.join(root, 'index.html')));
   }
 
-  app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+  app.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
     if (err instanceof HttpError) {
+      // A rejected session (ours or Questkeeper's) is dropped so the web app returns to the login form.
+      if (err.status === 401 && !req.originalUrl.startsWith('/api/auth/login')) {
+        res.clearCookie(SESSION_COOKIE, { httpOnly: true, sameSite: 'lax', secure: deps.config.secureCookies });
+      }
       res.status(err.status).json({ error: err.message });
     } else if (err instanceof SyntaxError) {
       res.status(400).json({ error: 'Invalid JSON' });

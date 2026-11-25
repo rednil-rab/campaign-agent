@@ -4,7 +4,7 @@ import { HttpError } from '../errors';
 import { RateLimiter } from '../rateLimit';
 import { requireDm } from '../middleware/auth';
 import { rollDice } from '../dice';
-import { campaignContext, describeAction, toEntity } from '../services/actions';
+import { campaignContext, describeAction, sanitizePayload, toEntity } from '../services/actions';
 import type { Config } from '../config';
 import type { QuestkeeperClient } from '../questkeeper';
 import type { ChatProvider } from '../openai/provider';
@@ -24,7 +24,15 @@ const HISTORY_MESSAGES = 20;
 export function createChatRouter({ config, questkeeper, provider, threads }: ChatDeps) {
   const router = Router();
   const daily = new RateLimiter(config.dailyMessageLimit, 24 * 60 * 60 * 1000);
+  const global = new RateLimiter(config.globalDailyMessageLimit, 24 * 60 * 60 * 1000);
   router.use(requireDm(config.jwtSecret));
+  router.use((req, _res, next) => {
+    const { allowedEmails } = config;
+    if (allowedEmails.length > 0 && !allowedEmails.includes(req.dm!.email.toLowerCase())) {
+      throw new HttpError(403, 'This account is not allowed to use the assistant');
+    }
+    next();
+  });
 
   router.get('/campaigns', async (req, res) => {
     const campaigns = await questkeeper.listCampaigns(req.dm!.qkToken);
@@ -46,6 +54,7 @@ export function createChatRouter({ config, questkeeper, provider, threads }: Cha
     if (content.length > MAX_MESSAGE_CHARS) throw new HttpError(400, `Message must be at most ${MAX_MESSAGE_CHARS} characters`);
 
     const campaign = await questkeeper.getCampaign(qkToken, campaignId);
+    if (!global.take('all')) throw new HttpError(429, 'The assistant has reached its daily limit, try again tomorrow');
     if (!daily.take(userId)) throw new HttpError(429, 'Daily message limit reached, try again tomorrow');
 
     const history = (await threads.messages(userId, campaignId)).slice(-HISTORY_MESSAGES);
@@ -63,7 +72,7 @@ export function createChatRouter({ config, questkeeper, provider, threads }: Cha
       } else {
         const details = describeAction(type, payload);
         assistant.content = assistant.content ? `${assistant.content}\n\n${details}` : details;
-        if (toEntity(type, payload)) assistant.action = { id: randomUUID(), type, payload, status: 'pending' };
+        if (toEntity(type, payload)) assistant.action = { id: randomUUID(), type, payload: sanitizePayload(type, payload), status: 'pending' };
       }
     }
     if (!assistant.content) assistant.content = 'I could not come up with a response, please rephrase.';

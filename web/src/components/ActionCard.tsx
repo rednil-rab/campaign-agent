@@ -1,4 +1,5 @@
 import React from 'react';
+import { Button, Tag, type TagTone } from '@questkeeper/theme';
 import { type Action } from '../store/chat';
 
 const LABELS: Record<Action['type'], string> = {
@@ -6,6 +7,12 @@ const LABELS: Record<Action['type'], string> = {
   generate_encounter: 'Encounter',
   suggest_quest_hook: 'Quest',
   roll_dice: 'Dice',
+};
+
+const STATUS: Record<Action['status'], { label: string; tone: TagTone }> = {
+  pending: { label: 'not added yet', tone: 'amber' },
+  applied: { label: 'added to campaign', tone: 'cyan' },
+  rejected: { label: 'dismissed', tone: 'muted' },
 };
 
 interface Props {
@@ -32,17 +39,15 @@ export const ActionCard: React.FC<Props> = ({ action, onApply, onReject }) => {
   };
 
   return (
-    <div className="action-card">
+    <div className="panel action-card">
       <div className="action-header">
-        <span className="action-type">{LABELS[action.type]}</span>
-        <span className={`action-status status-${action.status}`}>
-          {action.status === 'pending' ? 'not added yet' : action.status === 'applied' ? 'added to campaign' : 'dismissed'}
-        </span>
+        <Tag tone="cyan">{LABELS[action.type]}</Tag>
+        <Tag tone={STATUS[action.status].tone}>{STATUS[action.status].label}</Tag>
       </div>
       {action.status === 'pending' && (
         <div className="action-buttons">
-          <button className="btn-approve" disabled={busy} onClick={() => run(onApply)}>Add to campaign</button>
-          <button className="btn-reject" disabled={busy} onClick={() => run(onReject)}>Dismiss</button>
+          <Button disabled={busy} onClick={() => run(onApply)}>Add to campaign</Button>
+          <Button variant="ghost" disabled={busy} onClick={() => run(onReject)}>Dismiss</Button>
         </div>
       )}
       {error && <p role="alert" className="error">{error}</p>}
