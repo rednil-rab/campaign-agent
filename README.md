@@ -19,7 +19,7 @@ npm ci
 npm --prefix web ci
 ```
 
-Create a `.env` in the repo root:
+Copy `.env.example` to `.env` in the repo root and fill it in:
 
 | Variable | Required | Default | |
 |---|---|---|---|
