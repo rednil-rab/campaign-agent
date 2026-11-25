@@ -39,7 +39,7 @@ export function requireDm(secret: string) {
     const token = readCookie(req.headers.cookie, SESSION_COOKIE);
     if (!token) throw new HttpError(401, 'Not signed in');
     try {
-      const p = jwt.verify(token, secret);
+      const p = jwt.verify(token, secret, { algorithms: ['HS256'] });
       if (typeof p === 'string' || !p.sub || typeof p.email !== 'string' || typeof p.qk !== 'string') {
         throw new Error('bad payload');
       }

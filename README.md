@@ -8,7 +8,7 @@ A standalone web chat for tabletop RPG dungeon masters, built alongside [Questke
 - **Campaigns:** read from Questkeeper as the signed-in DM, so a DM only ever sees and writes their own campaigns.
 - **Chat:** each message sends a compact summary of the campaign (NPCs, quests, last three session recaps) plus recent history to OpenAI using function calling. Threads are stored in MongoDB per DM and campaign.
 - **Suggestions:** an NPC or quest hook is shown with an **Add to campaign** button. Approving it saves it to Questkeeper (an NPC, or a dormant quest). Encounters are text only. Dice are rolled on the server.
-- **Cost controls:** `gpt-4o-mini` by default, replies capped at 700 tokens, and a per-DM daily message limit.
+- **Cost controls:** `gpt-4o-mini` by default, replies capped at 700 tokens, a per-DM daily message limit, a global daily cap across all DMs, and an optional email allow-list. Questkeeper registration is open, so set `ALLOWED_EMAILS` before exposing this publicly, and set a spending limit on your OpenAI project.
 
 ## Run locally
 
@@ -26,10 +26,12 @@ Copy `.env.example` to `.env` in the repo root and fill it in:
 | `JWT_SECRET` | yes | | 32+ random characters; signs the session cookie |
 | `MONGODB_URI` | yes | | MongoDB connection string |
 | `OPENAI_API_KEY` | yes | | |
-| `QUESTKEEPER_BASE` | no | `http://localhost:3000/api` | Questkeeper API base URL |
+| `QUESTKEEPER_BASE` | no | `http://localhost:3000/api` | Questkeeper API base URL. Must be `https` in production unless it is localhost |
 | `MONGODB_DB` | no | `questkeeper` | Use a different name from Questkeeper's database |
 | `OPENAI_MODEL` | no | `gpt-4o-mini` | |
 | `DAILY_MESSAGE_LIMIT` | no | `50` | Messages per DM per 24h window (in memory; resets on restart) |
+| `GLOBAL_DAILY_MESSAGE_LIMIT` | no | `500` | Messages across all DMs per 24h window (in memory; resets on restart) |
+| `ALLOWED_EMAILS` | no | | Comma-separated Questkeeper emails allowed to use the assistant; empty means any Questkeeper account |
 | `PORT` | no | `3001` | |
 | `WEB_DIR` | no | | Built web app to serve, e.g. `web/dist` |
 | `NODE_ENV` | no | | `production` marks the session cookie `Secure` |

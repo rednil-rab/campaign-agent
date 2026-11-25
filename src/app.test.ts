@@ -2,6 +2,7 @@ import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import request from 'supertest';
+import jwt from 'jsonwebtoken';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from './app';
 import type { Config } from './config';
@@ -18,6 +19,8 @@ const baseConfig: Config = {
   openaiKey: 'unused',
   openaiModel: 'unused',
   dailyMessageLimit: 100,
+  globalDailyMessageLimit: 1000,
+  allowedEmails: [],
   secureCookies: false,
 };
 
@@ -28,7 +31,9 @@ function fakeQuestkeeper() {
     'b@x.com': { id: 'user-b', password: 'password-b', token: 'tok-b', campaign: { id: 'camp-b', name: 'Other' } },
   };
   const saved: { token: string; path: string; body: unknown }[] = [];
+  const redirectModes: unknown[] = [];
   const fetchImpl = (async (url: string, init: RequestInit = {}) => {
+    redirectModes.push(init.redirect);
     const p = new URL(url).pathname.replace('/api', '');
     const cookie = (init.headers as Record<string, string>)?.Cookie ?? '';
     const owner = Object.values(users).find((u) => cookie === `qk_session=${u.token}`);
@@ -51,7 +56,7 @@ function fakeQuestkeeper() {
     }
     return new Response('{}', { status: 404 });
   }) as typeof fetch;
-  return { client: new QuestkeeperClient('http://qk.test/api', fetchImpl), saved, expire: (email: string) => (users[email].token = 'expired') };
+  return { client: new QuestkeeperClient('http://qk.test/api', fetchImpl), saved, redirectModes, expire: (email: string) => (users[email].token = 'expired') };
 }
 
 class FakeProvider implements ChatProvider {
@@ -112,6 +117,35 @@ describe('agent chat app', () => {
       expect(res.status).toBe(401);
       expect(String(res.headers['set-cookie'])).toMatch(/qa_session=;/);
       expect((await agent.get('/api/auth/me')).status).toBe(401);
+    });
+
+    it('rejects a session token signed with a different algorithm, even with the right secret', async () => {
+      const forged = jwt.sign({ email: 'a@x.com', qk: 'tok-a' }, config.jwtSecret, { algorithm: 'HS512', subject: 'user-a' });
+      const res = await request(build()).get('/api/chat/campaigns').set('Cookie', `qa_session=${forged}`);
+      expect(res.status).toBe(401);
+    });
+
+    it('never follows redirects from Questkeeper, so credentials cannot be forwarded elsewhere', async () => {
+      const agent = await signIn(build());
+      await agent.get('/api/chat/campaigns');
+      expect(qk.redirectModes.length).toBeGreaterThan(1);
+      expect(qk.redirectModes.every((m) => m === 'error')).toBe(true);
+    });
+
+    it('only lets allow-listed accounts in when an allow-list is configured', async () => {
+      config.allowedEmails = ['a@x.com'];
+      const app = build();
+      await signIn(app);
+      const res = await request(app).post('/api/auth/login').send({ email: 'b@x.com', password: 'password-b' });
+      expect(res.status).toBe(403);
+      expect(res.headers['set-cookie']).toBeUndefined();
+    });
+
+    it('stops an existing session once its account is removed from the allow-list', async () => {
+      const app = build();
+      const agent = await signIn(app);
+      config.allowedEmails = ['someone-else@x.com'];
+      expect((await agent.get('/api/chat/campaigns')).status).toBe(403);
     });
 
     it('protects chat routes', async () => {
@@ -179,6 +213,28 @@ describe('agent chat app', () => {
       const assistant = res.body.messages[1];
       expect(assistant.content).toMatch(/2d6\+1 → \d+/);
       expect(assistant.action).toBeUndefined();
+    });
+
+    it('stops answering everyone once the global daily cap is reached', async () => {
+      config.globalDailyMessageLimit = 2;
+      const app = build();
+      const a = await signIn(app);
+      const b = await signIn(app, 'b@x.com', 'password-b');
+      await a.post('/api/chat/threads/camp-a/messages').send({ content: 'one' }).expect(201);
+      await b.post('/api/chat/threads/camp-b/messages').send({ content: 'two' }).expect(201);
+      const res = await a.post('/api/chat/threads/camp-a/messages').send({ content: 'three' });
+      expect(res.status).toBe(429);
+      expect(provider.seen).toHaveLength(2);
+    });
+
+    it('stores only whitelisted fields of a suggestion, never arbitrary model-supplied keys', async () => {
+      provider.next = {
+        narration: '',
+        action: { type: 'generate_npc', payload: { name: 'Goby', role: 'Brigand', $where: '1', 'a.b': 2, extra: { nested: true }, appearance: 5 } },
+      };
+      const agent = await signIn(build());
+      const action = (await agent.post('/api/chat/threads/camp-a/messages').send({ content: 'npc' })).body.messages[1].action;
+      expect(Object.keys(action.payload).sort()).toEqual(['name', 'role']);
     });
 
     it('shows encounters as text only', async () => {
