@@ -47,7 +47,7 @@ export class OpenAIProvider {
       const response = await this.client.chat.completions.create({
         model: 'gpt-4-turbo',
         messages: messages as OpenAI.ChatCompletionMessageParam[],
-        tools: tools as OpenAI.Chat.ChatCompletionTool[],
+        tools: tools as unknown as OpenAI.Chat.ChatCompletionTool[],
         tool_choice: 'auto',
         temperature: 0.7,
       });

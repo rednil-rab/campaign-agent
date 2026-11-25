@@ -4,6 +4,7 @@ export interface Message {
   content: string;
   timestamp: Date;
   action?: {
+    id?: string;
     type?: string;
     payload?: unknown;
     status?: 'pending' | 'applied' | 'rejected';
@@ -17,4 +18,5 @@ export interface ChatThreadDoc {
   createdAt: Date;
   updatedAt: Date;
   messages: Message[];
+  save(): Promise<ChatThreadDoc>;
 }
