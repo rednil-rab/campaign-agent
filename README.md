@@ -49,7 +49,6 @@ A standalone DM agent chat web application for Questkeeper campaign managers. En
 │   ├── vitest.config.ts
 │   └── package.json
 ├── package.json           # Monorepo root
-├── .env.example          # Environment template
 ├── README.md             # This file
 └── docs/                 # Design & planning
 
@@ -69,9 +68,7 @@ A standalone DM agent chat web application for Questkeeper campaign managers. En
 # Install all dependencies
 npm ci
 
-# Copy environment template and configure
-cp .env.example .env
-# Edit .env with your credentials
+# Create a .env file with the variables listed below
 ```
 
 ### Environment Variables
