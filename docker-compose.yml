@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: questkeeper-agent-db
+    environment:
+      MONGO_INITDB_DATABASE: questkeeper-agent
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongodb_data:/data/db
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: questkeeper-agent-backend
+    environment:
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-in-production-32chars}
+      MONGODB_URI: mongodb://mongodb:27017/questkeeper-agent
+      MONGODB_DB: questkeeper-agent
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      QUESTKEEPER_BASE: ${QUESTKEEPER_BASE:-http://host.docker.internal:3000/api}
+      PORT: 3000
+      NODE_ENV: development
+    ports:
+      - '3001:3000'
+    depends_on:
+      - mongodb
+    volumes:
+      - ./src:/app/src
+    command: npm run dev -w @questkeeper-agent/server
+
+  frontend:
+    build:
+      context: web
+      dockerfile: Dockerfile
+    container_name: questkeeper-agent-frontend
+    environment:
+      VITE_API_BASE: http://localhost:3001/api
+    ports:
+      - '5173:5173'
+    depends_on:
+      - backend
+    volumes:
+      - ./web/src:/app/src
+    command: npm run dev
+
+volumes:
+  mongodb_data:
