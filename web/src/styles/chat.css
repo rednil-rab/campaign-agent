@@ -12,12 +12,35 @@ body {
 #root {
   width: 100%;
   height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
 .login-page, .campaign-picker, .chat-page {
   padding: 20px;
   max-width: 1200px;
   margin: 0 auto;
+  flex: 1;
+}
+
+.chat-page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  padding: 0;
+}
+
+.chat-page header {
+  background: white;
+  padding: 16px 20px;
+  border-bottom: 1px solid #ddd;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.chat-page header h1 {
+  margin: 0;
+  font-size: 1.5em;
+  color: #333;
 }
 
 .message-list {
@@ -25,61 +48,204 @@ body {
   flex-direction: column;
   gap: 12px;
   margin-bottom: 20px;
-  min-height: 200px;
+  flex: 1;
   overflow-y: auto;
-}
-
-.message {
-  padding: 12px;
-  border-radius: 8px;
+  padding: 20px;
   background: white;
 }
 
-.message.user {
+.message-list.empty-state {
+  justify-content: center;
+  align-items: center;
+  color: #999;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #999;
+}
+
+.message {
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: white;
+  word-wrap: break-word;
+  max-width: 80%;
+}
+
+.message-user {
   align-self: flex-end;
   background: #007bff;
   color: white;
-  max-width: 70%;
+  border-bottom-right-radius: 2px;
 }
 
-.message.assistant {
+.message-assistant {
   align-self: flex-start;
   background: #e9ecef;
   color: black;
-  max-width: 70%;
+  border-bottom-left-radius: 2px;
+}
+
+.message-content {
+  line-height: 1.5;
+  margin-bottom: 4px;
+}
+
+.message-timestamp {
+  font-size: 0.75em;
+  opacity: 0.6;
+  margin-top: 4px;
 }
 
 .action-card {
-  margin-top: 8px;
-  padding: 8px;
-  background: rgba(0, 0, 0, 0.1);
+  margin-top: 12px;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.05);
+  border-left: 3px solid #007bff;
   border-radius: 4px;
+  font-size: 0.95em;
+}
+
+.action-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.action-type {
+  text-transform: capitalize;
+  color: #007bff;
+}
+
+.action-status {
+  font-size: 0.85em;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-weight: normal;
+}
+
+.status-pending {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.status-approved {
+  background: #d4edda;
+  color: #155724;
+}
+
+.status-rejected {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.status-applied {
+  background: #d1ecf1;
+  color: #0c5460;
+}
+
+.action-payload {
+  margin: 8px 0;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.85em;
+  overflow-x: auto;
+}
+
+.action-payload pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.btn-approve, .btn-reject {
+  flex: 1;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
   font-size: 0.9em;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.btn-approve {
+  background: #28a745;
+  color: white;
+}
+
+.btn-approve:hover:not(:disabled) {
+  background: #218838;
+}
+
+.btn-reject {
+  background: #dc3545;
+  color: white;
+}
+
+.btn-reject:hover:not(:disabled) {
+  background: #c82333;
+}
+
+.btn-approve:disabled, .btn-reject:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .message-input {
   display: flex;
   gap: 8px;
-  padding: 12px;
+  padding: 16px 20px;
   background: white;
-  border-radius: 8px;
+  border-top: 1px solid #ddd;
+  flex-shrink: 0;
 }
 
 .message-input input {
   flex: 1;
-  padding: 8px;
+  padding: 10px 12px;
   border: 1px solid #ddd;
   border-radius: 4px;
   font-size: 1em;
+  font-family: inherit;
+}
+
+.message-input input:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.message-input input:disabled {
+  background: #f5f5f5;
+  color: #999;
 }
 
 .message-input button {
-  padding: 8px 16px;
+  padding: 10px 20px;
   background: #007bff;
   color: white;
   border: none;
   border-radius: 4px;
   cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.message-input button:hover:not(:disabled) {
+  background: #0056b3;
 }
 
 .message-input button:disabled {
@@ -87,17 +253,71 @@ body {
   cursor: not-allowed;
 }
 
+.login-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  text-align: center;
+}
+
+.login-page h1 {
+  font-size: 2.5em;
+  margin: 0;
+  color: #333;
+}
+
+.login-page button {
+  padding: 12px 32px;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 1em;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.login-page button:hover {
+  background: #0056b3;
+}
+
+.campaign-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.campaign-picker h1 {
+  font-size: 2em;
+  margin: 0;
+  color: #333;
+}
+
+.campaign-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
 .campaign-card {
-  padding: 16px;
+  padding: 20px;
   background: white;
   border-radius: 8px;
   cursor: pointer;
-  margin-bottom: 12px;
-  border: 1px solid #ddd;
+  border: 2px solid transparent;
   transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .campaign-card:hover {
   background: #f0f0f0;
   border-color: #007bff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.campaign-card:active {
+  transform: translateY(0);
 }
