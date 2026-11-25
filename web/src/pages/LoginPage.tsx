@@ -1,39 +1,55 @@
 import React from 'react';
-import { Navigate } from 'react-router-dom';
-import { chatAPI } from '../api/client';
+import { Navigate, useNavigate } from 'react-router-dom';
+import { api, errorMessage } from '../api/client';
 
 export const LoginPage: React.FC = () => {
-  const [loading, setLoading] = React.useState(true);
+  const navigate = useNavigate();
+  const [checking, setChecking] = React.useState(true);
+  const [signedIn, setSignedIn] = React.useState(false);
+  const [email, setEmail] = React.useState('');
+  const [password, setPassword] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
-  const [loggedIn, setLoggedIn] = React.useState(false);
+  const [submitting, setSubmitting] = React.useState(false);
 
   React.useEffect(() => {
-    const tryLogin = async () => {
-      try {
-        const res = await chatAPI.login();
-        if (res.data.user) {
-          setLoggedIn(true);
-        }
-      } catch (err: any) {
-        setError('Failed to login with Questkeeper');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    tryLogin();
+    api
+      .me()
+      .then(() => setSignedIn(true))
+      .catch(() => undefined)
+      .finally(() => setChecking(false));
   }, []);
 
-  if (loading) return <div>Signing in...</div>;
-  if (loggedIn) return <Navigate to="/campaigns" />;
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSubmitting(true);
+    try {
+      await api.login(email, password);
+      navigate('/campaigns');
+    } catch (err) {
+      setError(errorMessage(err, 'Could not sign in'));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (checking) return <div className="login-page"><p>Loading…</p></div>;
+  if (signedIn) return <Navigate to="/campaigns" replace />;
 
   return (
-    <div className="login-page">
-      <h1>Agent Chat</h1>
-      <p>{error || 'Sign in with Questkeeper to continue'}</p>
-      <button onClick={() => window.location.href = '/api/auth/login'}>
-        Sign in with Questkeeper
-      </button>
-    </div>
+    <form className="login-page" onSubmit={submit}>
+      <h1>DM Assistant</h1>
+      <p>Sign in with your Questkeeper account.</p>
+      <label>
+        Email
+        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="username" required />
+      </label>
+      <label>
+        Password
+        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />
+      </label>
+      {error && <p role="alert" className="error">{error}</p>}
+      <button type="submit" disabled={submitting}>{submitting ? 'Signing in…' : 'Sign in'}</button>
+    </form>
   );
 };

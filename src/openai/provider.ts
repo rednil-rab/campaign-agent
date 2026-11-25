@@ -1,84 +1,65 @@
 import OpenAI from 'openai';
-import { tools, ToolName } from './tools';
-import { Message } from '../models/types';
+import { TOOL_NAMES, tools } from './tools';
+import type { Message, ToolName } from '../models/types';
 import { HttpError } from '../errors';
 
 export interface GenerateResponseResult {
   narration: string;
-  action?: {
-    type: ToolName;
-    payload: unknown;
-  };
+  action?: { type: ToolName; payload: Record<string, unknown> };
 }
 
-export class OpenAIProvider {
+export interface ChatProvider {
+  generateResponse(context: string, history: Message[], userMessage: string): Promise<GenerateResponseResult>;
+}
+
+const SYSTEM_PROMPT = `You are an assistant for a tabletop RPG dungeon master. Answer only what the DM asks; do not volunteer extra content.
+Use the tools when the DM asks you to create an NPC, an encounter or a quest, or to roll dice. Keep replies short and usable at the table.
+You may use simple Markdown (bold, lists). Never invent facts about the campaign that are not in the context.`;
+
+export class OpenAIProvider implements ChatProvider {
   private client: OpenAI;
 
-  constructor(apiKey: string) {
-    if (!apiKey) {
-      throw new Error('OpenAI API key is required');
-    }
-    this.client = new OpenAI({ apiKey });
+  constructor(
+    apiKey: string,
+    private model = 'gpt-4o-mini',
+  ) {
+    if (!apiKey) throw new Error('OpenAI API key is required');
+    this.client = new OpenAI({ apiKey, timeout: 30_000 });
   }
 
-  async generateResponse(
-    context: string,
-    history: Message[],
-    userMessage: string
-  ): Promise<GenerateResponseResult> {
-    const systemPrompt = `You are a D&D 5e game master assistant. Help the DM generate content, suggest encounters, and manage the campaign. When appropriate, use the provided tools to suggest specific mechanics or content.`;
-
-    const messages = [
-      {
-        role: 'system' as const,
-        content: `${systemPrompt}\n\nCampaign Context:\n${context}`,
-      },
-      ...history.map((msg) => ({
-        role: msg.role as 'user' | 'assistant',
-        content: msg.content,
-      })),
-      {
-        role: 'user' as const,
-        content: userMessage,
-      },
-    ];
-
+  async generateResponse(context: string, history: Message[], userMessage: string): Promise<GenerateResponseResult> {
+    let message: OpenAI.Chat.ChatCompletionMessage;
     try {
       const response = await this.client.chat.completions.create({
-        model: 'gpt-4-turbo',
-        messages: messages as OpenAI.ChatCompletionMessageParam[],
-        tools: tools as unknown as OpenAI.Chat.ChatCompletionTool[],
+        model: this.model,
+        messages: [
+          { role: 'system', content: `${SYSTEM_PROMPT}\n\nCampaign context:\n${context}` },
+          ...history.map((m) => ({ role: m.role, content: m.content })),
+          { role: 'user', content: userMessage },
+        ],
+        tools,
         tool_choice: 'auto',
-        temperature: 0.7,
+        temperature: 0.8,
+        max_tokens: 700,
       });
-
-      const content = response.choices[0].message.content || '';
-
-      // Check for tool call
-      const toolCall = response.choices[0].message.tool_calls?.[0];
-      if (toolCall && toolCall.type === 'function') {
-        const fnName = toolCall.function.name as ToolName;
-        let payload: unknown;
-        try {
-          payload = JSON.parse(toolCall.function.arguments);
-        } catch {
-          payload = toolCall.function.arguments;
-        }
-
-        return {
-          narration: content,
-          action: {
-            type: fnName,
-            payload,
-          },
-        };
-      }
-
-      return {
-        narration: content,
-      };
-    } catch (err: any) {
-      throw new HttpError(500, `OpenAI error: ${err.message}`);
+      message = response.choices[0].message;
+    } catch (err) {
+      console.error('OpenAI request failed', err instanceof Error ? err.message : err);
+      throw new HttpError(502, 'The assistant is unavailable right now, please try again');
     }
+
+    const call = message.tool_calls?.find((c) => c.type === 'function');
+    const name = call?.type === 'function' ? (call.function.name as ToolName) : undefined;
+    if (call?.type === 'function' && name && TOOL_NAMES.includes(name)) {
+      try {
+        const payload = JSON.parse(call.function.arguments);
+        if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
+          return { narration: message.content ?? '', action: { type: name, payload } };
+        }
+      } catch {
+        // Malformed tool arguments: fall through and answer with the text alone.
+      }
+    }
+    return { narration: message.content ?? '' };
   }
 }

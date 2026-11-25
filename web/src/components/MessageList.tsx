@@ -1,46 +1,56 @@
 import React from 'react';
 import { useChatStore } from '../store/chat';
+import { api, errorMessage } from '../api/client';
 import { ActionCard } from './ActionCard';
 
-export const MessageList: React.FC = () => {
-  const messages = useChatStore((state) => state.messages);
-  const messagesEndRef = React.useRef<HTMLDivElement>(null);
+export const MessageList: React.FC<{ campaignId: string }> = ({ campaignId }) => {
+  const messages = useChatStore((s) => s.messages);
+  const setActionStatus = useChatStore((s) => s.setActionStatus);
+  const endRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    endRef.current?.scrollIntoView?.({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleApproveAction = (messageId: string) => {
-    console.log('Approve action for message:', messageId);
-    // TODO: Call API to approve action
+  const apply = async (actionId: string) => {
+    try {
+      await api.applyAction(campaignId, actionId);
+    } catch (err) {
+      throw new Error(errorMessage(err, 'Could not add this to the campaign'));
+    }
+    setActionStatus(actionId, 'applied');
   };
 
-  const handleRejectAction = (messageId: string) => {
-    console.log('Reject action for message:', messageId);
-    // TODO: Call API to reject action
+  const reject = async (actionId: string) => {
+    try {
+      await api.rejectAction(campaignId, actionId);
+    } catch (err) {
+      throw new Error(errorMessage(err, 'Could not dismiss this'));
+    }
+    setActionStatus(actionId, 'rejected');
   };
 
   return (
     <div className="message-list">
       {messages.length === 0 && (
         <div className="empty-state">
-          <p>No messages yet. Start by asking the agent for a suggestion!</p>
+          <p>Ask for an NPC, an encounter, a quest hook, or a dice roll.</p>
         </div>
       )}
-      {messages.map((msg) => (
-        <div key={msg.id} className={`message message-${msg.role}`}>
-          <div className="message-content">{msg.content}</div>
-          {msg.action && (
+      {messages.map((m) => (
+        <div key={m.id} className={`message message-${m.role}`}>
+          <div className="message-content">{m.content}</div>
+          {m.action && (
             <ActionCard
-              action={msg.action as any}
-              onApprove={() => handleApproveAction(msg.id)}
-              onReject={() => handleRejectAction(msg.id)}
+              action={m.action}
+              campaignId={campaignId}
+              onApply={() => apply(m.action!.id)}
+              onReject={() => reject(m.action!.id)}
             />
           )}
-          <div className="message-timestamp">{new Date(msg.timestamp).toLocaleTimeString()}</div>
         </div>
       ))}
-      <div ref={messagesEndRef} />
+      <div ref={endRef} />
     </div>
   );
 };

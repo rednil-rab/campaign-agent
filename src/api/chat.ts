@@ -1,79 +1,98 @@
-import { Router, Request, Response } from 'express';
-import { ChatService } from '../services/chatService';
-import { OpenAIProvider } from '../openai/provider';
-import { QuestkeeperAgentClient } from '../agent-client';
+import { randomInt, randomUUID } from 'node:crypto';
+import { Router } from 'express';
 import { HttpError } from '../errors';
+import { RateLimiter } from '../rateLimit';
+import { requireDm } from '../middleware/auth';
+import { rollDice } from '../dice';
+import { campaignContext, describeAction, toEntity } from '../services/actions';
+import type { Config } from '../config';
+import type { QuestkeeperClient } from '../questkeeper';
+import type { ChatProvider } from '../openai/provider';
+import type { ThreadStore } from '../threadStore';
+import type { Message } from '../models/types';
 
-export function createChatRouter() {
+export interface ChatDeps {
+  config: Config;
+  questkeeper: QuestkeeperClient;
+  provider: ChatProvider;
+  threads: ThreadStore;
+}
+
+const MAX_MESSAGE_CHARS = 2000;
+const HISTORY_MESSAGES = 20;
+
+export function createChatRouter({ config, questkeeper, provider, threads }: ChatDeps) {
   const router = Router();
-  const chatService = new ChatService();
+  const daily = new RateLimiter(config.dailyMessageLimit, 24 * 60 * 60 * 1000);
+  router.use(requireDm(config.jwtSecret));
 
-  // Middleware to require DM auth
-  const requireDM = (req: Request, res: Response, next: any) => {
-    if (!(req as any).dm) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-    next();
-  };
-
-  router.post('/login', requireDM, async (req: Request, res: Response) => {
-    try {
-      const dm = (req as any).dm;
-      const campaigns = await chatService.getCampaigns(dm.userId);
-      res.json({ user: dm, campaigns });
-    } catch (err: any) {
-      res.status(500).json({ error: err.message });
-    }
+  router.get('/campaigns', async (req, res) => {
+    const campaigns = await questkeeper.listCampaigns(req.dm!.qkToken);
+    res.json(campaigns.map((c) => ({ id: c.id, name: c.name })));
   });
 
-  router.get('/campaigns', requireDM, async (req: Request, res: Response) => {
-    try {
-      const dm = (req as any).dm;
-      const campaigns = await chatService.getCampaigns(dm.userId);
-      res.json(campaigns);
-    } catch (err: any) {
-      res.status(500).json({ error: err.message });
-    }
+  // Questkeeper only returns campaigns the DM owns, so this also proves ownership.
+  router.get('/threads/:campaignId', async (req, res) => {
+    const { userId, qkToken } = req.dm!;
+    await questkeeper.getCampaign(qkToken, req.params.campaignId);
+    res.json({ messages: await threads.messages(userId, req.params.campaignId) });
   });
 
-  router.get('/threads/:campaignId', requireDM, async (req: Request, res: Response) => {
-    try {
-      const { campaignId } = req.params;
-      const dm = (req as any).dm;
-      const thread = await chatService.getThread(campaignId, dm.userId);
-      res.json(thread || { messages: [] });
-    } catch (err: any) {
-      res.status(500).json({ error: err.message });
-    }
-  });
+  router.post('/threads/:campaignId/messages', async (req, res) => {
+    const { userId, qkToken } = req.dm!;
+    const { campaignId } = req.params;
+    const content = typeof req.body?.content === 'string' ? req.body.content.trim() : '';
+    if (!content) throw new HttpError(400, 'Message is required');
+    if (content.length > MAX_MESSAGE_CHARS) throw new HttpError(400, `Message must be at most ${MAX_MESSAGE_CHARS} characters`);
 
-  router.post('/threads/:campaignId/messages', requireDM, async (req: Request, res: Response) => {
-    try {
-      const { campaignId } = req.params;
-      const { content } = req.body;
-      const dm = (req as any).dm;
+    const campaign = await questkeeper.getCampaign(qkToken, campaignId);
+    if (!daily.take(userId)) throw new HttpError(429, 'Daily message limit reached, try again tomorrow');
 
-      if (!content || typeof content !== 'string') {
-        return res.status(400).json({ error: 'Content is required' });
+    const history = (await threads.messages(userId, campaignId)).slice(-HISTORY_MESSAGES);
+    const result = await provider.generateResponse(campaignContext(campaign), history, content);
+
+    const assistant: Message = { id: randomUUID(), role: 'assistant', content: result.narration, timestamp: new Date() };
+    if (result.action) {
+      const { type, payload } = result.action;
+      if (type === 'roll_dice') {
+        try {
+          assistant.content = `${assistant.content}\n\n🎲 ${rollDice(String(payload.dice ?? ''), randomInt).text}`.trim();
+        } catch (err) {
+          assistant.content = `${assistant.content}\n\n(Could not roll: ${(err as Error).message})`.trim();
+        }
+      } else {
+        const details = describeAction(type, payload);
+        assistant.content = assistant.content ? `${assistant.content}\n\n${details}` : details;
+        if (toEntity(type, payload)) assistant.action = { id: randomUUID(), type, payload, status: 'pending' };
       }
-
-      // Add user message
-      await chatService.addMessage(campaignId, dm.userId, 'user', content);
-
-      // Get thread history
-      const thread = await chatService.getThread(campaignId, dm.userId);
-      if (!thread) {
-        return res.status(404).json({ error: 'Thread not found' });
-      }
-
-      // TODO: Get campaign context from Questkeeper
-      // TODO: Call OpenAI to generate response
-      // TODO: Parse response and add assistant message
-
-      res.json({ message: { role: 'assistant', content: 'TODO: implement' } });
-    } catch (err: any) {
-      res.status(500).json({ error: err.message });
     }
+    if (!assistant.content) assistant.content = 'I could not come up with a response, please rephrase.';
+
+    const user: Message = { id: randomUUID(), role: 'user', content, timestamp: new Date() };
+    await threads.append(userId, campaignId, user, assistant);
+    res.status(201).json({ messages: [user, assistant] });
+  });
+
+  router.post('/threads/:campaignId/actions/:actionId/apply', async (req, res) => {
+    const { userId, qkToken } = req.dm!;
+    const { campaignId, actionId } = req.params;
+    const action = (await threads.messages(userId, campaignId)).find((m) => m.action?.id === actionId)?.action;
+    if (!action) throw new HttpError(404, 'Action not found');
+    if (action.status !== 'pending') throw new HttpError(409, 'Action was already handled');
+    const saveable = toEntity(action.type, action.payload);
+    if (!saveable) throw new HttpError(400, 'This suggestion cannot be added to the campaign');
+
+    // The action id doubles as the entity id, so retrying after a failure just overwrites the same record.
+    await questkeeper.saveEntity(qkToken, campaignId, saveable.kind, saveable.build(actionId));
+    await threads.resolveAction(userId, campaignId, actionId, 'applied');
+    res.json({ status: 'applied' });
+  });
+
+  router.post('/threads/:campaignId/actions/:actionId/reject', async (req, res) => {
+    const { userId } = req.dm!;
+    const ok = await threads.resolveAction(userId, req.params.campaignId, req.params.actionId, 'rejected');
+    if (!ok) throw new HttpError(409, 'Action was not found or was already handled');
+    res.json({ status: 'rejected' });
   });
 
   return router;

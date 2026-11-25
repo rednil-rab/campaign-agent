@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import { Config } from '../config';
 
-export async function connectDb(config: Config): Promise<void> {
+export async function connectDb(config: Pick<Config, 'mongodbUri' | 'mongodbDb'>): Promise<void> {
   try {
     await mongoose.connect(config.mongodbUri, {
       dbName: config.mongodbDb,

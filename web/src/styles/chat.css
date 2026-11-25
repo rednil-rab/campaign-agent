@@ -321,3 +321,12 @@ body {
 .campaign-card:active {
   transform: translateY(0);
 }
+
+.message-content { white-space: pre-wrap; }
+.error { color: #b02a37; margin: 4px 0; }
+.login-page { max-width: 360px; }
+.login-page label { display: flex; flex-direction: column; gap: 4px; width: 100%; text-align: left; }
+.login-page input { padding: 10px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 1em; }
+.campaign-card { font: inherit; text-align: left; width: 100%; }
+.link-button { background: none; border: none; color: #007bff; cursor: pointer; padding: 0; font: inherit; align-self: flex-start; }
+.message-input { flex-wrap: wrap; }

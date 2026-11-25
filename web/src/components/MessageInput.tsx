@@ -1,45 +1,47 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useChatStore } from '../store/chat';
-import { chatAPI } from '../api/client';
+import { api, errorMessage, isUnauthorized } from '../api/client';
 
-export const MessageInput: React.FC = () => {
+export const MessageInput: React.FC<{ campaignId: string }> = ({ campaignId }) => {
   const [content, setContent] = React.useState('');
-  const { campaignId, loading, addMessage, setLoading } = useChatStore();
+  const [error, setError] = React.useState<string | null>(null);
+  const loading = useChatStore((s) => s.loading);
+  const setLoading = useChatStore((s) => s.setLoading);
+  const addMessages = useChatStore((s) => s.addMessages);
+  const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!content.trim() || !campaignId || loading) return;
-
+    const text = content.trim();
+    if (!text || loading) return;
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      const userMsg = { id: Date.now().toString(), role: 'user' as const, content, timestamp: new Date() };
-      addMessage(userMsg);
-
-      const res = await chatAPI.sendMessage(campaignId, content);
-      if (res.data.message) {
-        addMessage(res.data.message);
-      }
-
+      const res = await api.sendMessage(campaignId, text);
+      addMessages(...res.data.messages);
       setContent('');
     } catch (err) {
-      console.error('Error sending message:', err);
+      if (isUnauthorized(err)) navigate('/', { replace: true });
+      else setError(errorMessage(err, 'Could not send your message'));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="message-input">
+    <form onSubmit={submit} className="message-input">
       <input
         type="text"
         value={content}
         onChange={(e) => setContent(e.target.value)}
-        placeholder="Ask the AI..."
+        placeholder="Ask for an NPC, encounter, quest hook or dice roll…"
+        maxLength={2000}
+        aria-label="Message"
         disabled={loading}
       />
-      <button type="submit" disabled={loading}>
-        Send
-      </button>
+      <button type="submit" disabled={loading || !content.trim()}>{loading ? 'Thinking…' : 'Send'}</button>
+      {error && <p role="alert" className="error">{error}</p>}
     </form>
   );
 };

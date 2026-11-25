@@ -1,74 +1,53 @@
 import React from 'react';
-import { Navigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useChatStore } from '../store/chat';
 import { MessageList } from '../components/MessageList';
 import { MessageInput } from '../components/MessageInput';
-import { chatAPI } from '../api/client';
+import { api, errorMessage, isUnauthorized } from '../api/client';
 
 export const ChatPage: React.FC = () => {
   const { campaignId } = useParams<{ campaignId: string }>();
-  const [campaign, setCampaign] = React.useState<{ id: string; name: string } | null>(null);
+  const navigate = useNavigate();
+  const { setCampaignId, setMessages, clearMessages } = useChatStore();
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
-  const storeId = useChatStore((state) => state.campaignId);
 
   React.useEffect(() => {
     if (!campaignId) return;
-
-    const loadCampaignAndThread = async () => {
-      try {
-        // Load campaign metadata
-        // TODO: Once getCampaigns returns detailed data, fetch single campaign
-        setCampaign({ id: campaignId, name: `Campaign ${campaignId}` });
-
-        // Load chat thread
-        await chatAPI.getThread(campaignId);
-        // TODO: Load messages into store
-      } catch (err) {
-        console.error('Error loading campaign:', err);
-        setError('Failed to load campaign');
-      } finally {
-        setLoading(false);
-      }
+    let cancelled = false;
+    setCampaignId(campaignId);
+    clearMessages();
+    setLoading(true);
+    setError(null);
+    api
+      .getThread(campaignId)
+      .then((res) => !cancelled && setMessages(res.data.messages))
+      .catch((err) => {
+        if (cancelled) return;
+        if (isUnauthorized(err)) navigate('/', { replace: true });
+        else setError(errorMessage(err, 'Failed to load this campaign'));
+      })
+      .finally(() => !cancelled && setLoading(false));
+    return () => {
+      cancelled = true;
     };
+  }, [campaignId, navigate, setCampaignId, setMessages, clearMessages]);
 
-    loadCampaignAndThread();
-  }, [campaignId]);
-
-  if (!campaignId || !storeId) {
-    return <Navigate to="/campaigns" />;
-  }
-
-  if (loading) {
-    return (
-      <div className="chat-page">
-        <header>
-          <h1>Loading...</h1>
-        </header>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="chat-page">
-        <header>
-          <h1>Error</h1>
-        </header>
-        <div className="message-list">
-          <p>{error}</p>
-        </div>
-      </div>
-    );
-  }
+  if (!campaignId) return null;
 
   return (
     <div className="chat-page">
       <header>
-        <h1>{campaign?.name || `Chat - Campaign ${campaignId}`}</h1>
+        <Link to="/campaigns">← Campaigns</Link>
       </header>
-      <MessageList />
-      <MessageInput />
+      {loading && <p className="empty-state">Loading…</p>}
+      {error && <p role="alert" className="error empty-state">{error}</p>}
+      {!loading && !error && (
+        <>
+          <MessageList campaignId={campaignId} />
+          <MessageInput campaignId={campaignId} />
+        </>
+      )}
     </div>
   );
 };

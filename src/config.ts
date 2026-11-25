@@ -5,6 +5,17 @@ export interface Config {
   jwtSecret: string;
   questkeeperBase: string;
   openaiKey: string;
+  openaiModel: string;
+  dailyMessageLimit: number;
+  webDir?: string;
+  secureCookies: boolean;
+}
+
+function positiveInt(value: string | undefined, fallback: number, name: string): number {
+  if (value === undefined) return fallback;
+  const n = Number(value);
+  if (!Number.isInteger(n) || n < 1) throw new Error(`${name} must be a positive whole number`);
+  return n;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
@@ -23,16 +34,16 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     throw new Error('PORT must be between 1 and 65535');
   }
 
-  const mongodbDb = env.MONGODB_DB ?? 'questkeeper';
-  const questkeeperBase = env.QUESTKEEPER_BASE ?? 'http://localhost:3000/api';
-
   return {
     port,
     mongodbUri,
-    mongodbDb,
+    mongodbDb: env.MONGODB_DB ?? 'questkeeper',
     jwtSecret,
-    questkeeperBase,
+    questkeeperBase: (env.QUESTKEEPER_BASE ?? 'http://localhost:3000/api').replace(/\/+$/, ''),
     openaiKey,
+    openaiModel: env.OPENAI_MODEL ?? 'gpt-4o-mini',
+    dailyMessageLimit: positiveInt(env.DAILY_MESSAGE_LIMIT, 50, 'DAILY_MESSAGE_LIMIT'),
+    webDir: env.WEB_DIR || undefined,
+    secureCookies: env.NODE_ENV === 'production',
   };
 }
-

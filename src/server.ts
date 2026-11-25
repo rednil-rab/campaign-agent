@@ -1,43 +1,30 @@
-import { Express } from 'express';
+import { pathToFileURL } from 'node:url';
 import { createApp } from './app';
-import { loadConfig, Config } from './config';
+import { loadConfig } from './config';
+import { connectDb } from './db/connect';
+import { OpenAIProvider } from './openai/provider';
+import { QuestkeeperClient } from './questkeeper';
+import { MongoThreadStore } from './threadStore';
 
-let httpServer: any;
-
-export async function startServer(config: Config): Promise<Express> {
-  const app = createApp();
-
-  return new Promise((resolve) => {
-    httpServer = app.listen(config.port, () => {
-      console.log(`Agent chat service listening on port ${config.port}`);
-      resolve(app);
-    });
-  });
-}
-
-export async function stopServer(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (!httpServer) return resolve();
-    httpServer.close((err: any) => {
-      if (err) reject(err);
-      else resolve();
-    });
-  });
-}
-
-// Main entry point
-if (import.meta.url === `file://${process.argv[1]}`) {
+async function main() {
   const config = loadConfig();
-  startServer(config).catch((err) => {
+  await connectDb(config);
+  const app = createApp({
+    config,
+    questkeeper: new QuestkeeperClient(config.questkeeperBase),
+    provider: new OpenAIProvider(config.openaiKey, config.openaiModel),
+    threads: new MongoThreadStore(),
+  });
+  const server = app.listen(config.port, () => console.log(`Agent chat service listening on port ${config.port}`));
+
+  for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+    process.on(signal, () => server.close(() => process.exit(0)));
+  }
+}
+
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((err) => {
     console.error('Failed to start server:', err);
     process.exit(1);
   });
-
-  for (const signal of ['SIGINT', 'SIGTERM'] as const) {
-    process.on(signal, async () => {
-      console.log(`Received ${signal}, shutting down...`);
-      await stopServer();
-      process.exit(0);
-    });
-  }
 }

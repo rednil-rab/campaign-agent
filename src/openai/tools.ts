@@ -1,62 +1,57 @@
+import type { ToolName } from '../models/types';
+
+const fn = (name: ToolName, description: string, properties: Record<string, unknown>, required: string[]) => ({
+  type: 'function' as const,
+  function: { name, description, parameters: { type: 'object', properties, required } },
+});
+
 export const tools = [
-  {
-    name: 'generate_npc',
-    description: 'Create a new NPC with stats, personality, and motivations',
-    parameters: {
-      type: 'object' as const,
-      properties: {
-        name: { type: 'string', description: 'NPC name' },
-        role: { type: 'string', description: 'Role in the campaign (shopkeeper, villain, ally, etc)' },
-        class: { type: 'string', description: 'D&D class if applicable' },
-        motivation: { type: 'string', description: 'What drives this NPC' },
-        appearance: { type: 'string', description: 'Physical description' },
-        personality: { type: 'string', description: 'Personality traits and quirks' },
-      },
-      required: ['name', 'role'],
+  fn(
+    'generate_npc',
+    'Create a new NPC the DM can add to the campaign',
+    {
+      name: { type: 'string', description: 'NPC name' },
+      role: { type: 'string', description: 'Role in the campaign (shopkeeper, villain, ally, etc)' },
+      location: { type: 'string', description: 'Where the NPC is usually found' },
+      disposition: { type: 'string', enum: ['ally', 'neutral', 'hostile', 'unknown'] },
+      appearance: { type: 'string', description: 'Physical description' },
+      personality: { type: 'string', description: 'Personality traits and quirks' },
+      motivation: { type: 'string', description: 'What drives this NPC' },
     },
-  },
-  {
-    name: 'generate_encounter',
-    description: 'Create a combat or non-combat encounter with enemies, traps, or challenges',
-    parameters: {
-      type: 'object' as const,
-      properties: {
-        name: { type: 'string', description: 'Encounter name' },
-        difficulty: { type: 'string', enum: ['easy', 'medium', 'hard', 'deadly'], description: 'Encounter difficulty' },
-        enemies: { type: 'array', items: { type: 'string' }, description: 'List of enemy types and counts' },
-        terrain: { type: 'string', description: 'Encounter location and terrain' },
-        treasures: { type: 'array', items: { type: 'string' }, description: 'Potential rewards' },
-      },
-      required: ['name', 'difficulty'],
+    ['name', 'role'],
+  ),
+  fn(
+    'generate_encounter',
+    'Describe an encounter (enemies, terrain, rewards). Informational only; it is not saved to the campaign',
+    {
+      name: { type: 'string' },
+      difficulty: { type: 'string', enum: ['easy', 'medium', 'hard', 'deadly'] },
+      enemies: { type: 'array', items: { type: 'string' }, description: 'Enemies with counts, names and gear' },
+      terrain: { type: 'string' },
+      treasures: { type: 'array', items: { type: 'string' } },
     },
-  },
-  {
-    name: 'suggest_quest_hook',
-    description: 'Suggest an interesting plot hook or quest for the party',
-    parameters: {
-      type: 'object' as const,
-      properties: {
-        title: { type: 'string', description: 'Quest title' },
-        giver: { type: 'string', description: 'NPC who offers the quest' },
-        summary: { type: 'string', description: 'Short summary of the quest' },
-        reward: { type: 'string', description: 'Reward for completion' },
-        complications: { type: 'array', items: { type: 'string' }, description: 'Potential complications or plot twists' },
-      },
-      required: ['title', 'summary'],
+    ['name', 'difficulty'],
+  ),
+  fn(
+    'suggest_quest_hook',
+    'Suggest a quest the DM can add to the campaign',
+    {
+      title: { type: 'string' },
+      summary: { type: 'string', description: 'Short summary of the quest' },
+      reward: { type: 'string' },
+      complications: { type: 'array', items: { type: 'string' } },
     },
-  },
-  {
-    name: 'roll_dice',
-    description: 'Roll dice for a specific purpose (checks, damage, etc)',
-    parameters: {
-      type: 'object' as const,
-      properties: {
-        dice: { type: 'string', description: 'Dice notation (e.g., 1d20+5, 2d6)' },
-        reason: { type: 'string', description: 'Why we are rolling (e.g., Attack roll, Perception check)' },
-      },
-      required: ['dice', 'reason'],
+    ['title', 'summary'],
+  ),
+  fn(
+    'roll_dice',
+    'Roll dice for a check, attack or damage',
+    {
+      dice: { type: 'string', description: 'Dice notation such as 1d20+5 or 2d6' },
+      reason: { type: 'string', description: 'What the roll is for' },
     },
-  },
+    ['dice'],
+  ),
 ];
 
-export type ToolName = 'generate_npc' | 'generate_encounter' | 'suggest_quest_hook' | 'roll_dice';
+export const TOOL_NAMES: readonly ToolName[] = ['generate_npc', 'generate_encounter', 'suggest_quest_hook', 'roll_dice'];
