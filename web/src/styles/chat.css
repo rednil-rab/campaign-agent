@@ -1,0 +1,103 @@
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  margin: 0;
+  padding: 0;
+  background: #f5f5f5;
+}
+
+#root {
+  width: 100%;
+  height: 100vh;
+}
+
+.login-page, .campaign-picker, .chat-page {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.message-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+  min-height: 200px;
+  overflow-y: auto;
+}
+
+.message {
+  padding: 12px;
+  border-radius: 8px;
+  background: white;
+}
+
+.message.user {
+  align-self: flex-end;
+  background: #007bff;
+  color: white;
+  max-width: 70%;
+}
+
+.message.assistant {
+  align-self: flex-start;
+  background: #e9ecef;
+  color: black;
+  max-width: 70%;
+}
+
+.action-card {
+  margin-top: 8px;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+.message-input {
+  display: flex;
+  gap: 8px;
+  padding: 12px;
+  background: white;
+  border-radius: 8px;
+}
+
+.message-input input {
+  flex: 1;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1em;
+}
+
+.message-input button {
+  padding: 8px 16px;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.message-input button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.campaign-card {
+  padding: 16px;
+  background: white;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-bottom: 12px;
+  border: 1px solid #ddd;
+  transition: all 0.2s;
+}
+
+.campaign-card:hover {
+  background: #f0f0f0;
+  border-color: #007bff;
+}
