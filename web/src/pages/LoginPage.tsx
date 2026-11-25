@@ -1,5 +1,6 @@
 import React from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
+import { Button, Panel } from '@questkeeper/theme';
 import { api, errorMessage } from '../api/client';
 
 export const LoginPage: React.FC = () => {
@@ -33,23 +34,27 @@ export const LoginPage: React.FC = () => {
     }
   };
 
-  if (checking) return <div className="login-page"><p>Loading…</p></div>;
+  if (checking) return <main className="login-page"><p className="muted">Loading…</p></main>;
   if (signedIn) return <Navigate to="/campaigns" replace />;
 
   return (
-    <form className="login-page" onSubmit={submit}>
-      <h1>DM Assistant</h1>
-      <p>Sign in with your Questkeeper account.</p>
-      <label>
-        Email
-        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="username" required />
-      </label>
-      <label>
-        Password
-        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />
-      </label>
-      {error && <p role="alert" className="error">{error}</p>}
-      <button type="submit" disabled={submitting}>{submitting ? 'Signing in…' : 'Sign in'}</button>
-    </form>
+    <main className="login-page">
+      <h1 className="page-title">DM Assistant</h1>
+      <Panel>
+        <p className="muted">Sign in with your Questkeeper account.</p>
+        <form className="form" onSubmit={submit}>
+          <label className="field">
+            Email
+            <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="username" required />
+          </label>
+          <label className="field">
+            Password
+            <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />
+          </label>
+          {error && <p role="alert" className="error">{error}</p>}
+          <Button type="submit" disabled={submitting}>{submitting ? 'Signing in…' : 'Sign in'}</Button>
+        </form>
+      </Panel>
+    </main>
   );
 };

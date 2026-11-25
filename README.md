@@ -49,6 +49,10 @@ npm start       # node dist/server.js (set WEB_DIR=web/dist to serve the UI from
 
 On Render, create a Web Service from this repo with build command `npm ci && npm run build`, start command `npm start`, and the environment variables above (`NODE_ENV=production`, `WEB_DIR=web/dist`, `QUESTKEEPER_BASE` pointing at your deployed Questkeeper). MongoDB Atlas has a free tier.
 
+## Look and feel
+
+The web app uses the shared 8-bit theme from [`@questkeeper/theme`](https://github.com/rednil-rab/questkeeper-theme), a git dependency in `web/package.json` pinned by tag, so it matches Questkeeper. `web/src/main.tsx` imports the theme's `tokens.css` and `base.css` before the app CSS, and `web/index.html` loads the Press Start 2P and VT323 fonts (the tokens fall back to monospace). `web/src/styles/chat.css` holds layout only and must use theme tokens, never raw colors. To change the look, change the theme repo, then bump the tag.
+
 ## Checks
 
 ```bash
