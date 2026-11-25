@@ -13,7 +13,7 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "build:server": "esbuild src/server.ts --bundle --platform=node --format=esm --packages=external --outfile=dist/server.js",
-    "build:web": "npm --prefix web ci && npm --prefix web run build",
+    "build:web": "npm --prefix web ci --include=dev && npm --prefix web run build",
     "dev:api": "npm run build:server && node --env-file-if-exists=.env dist/server.js",
     "dev:web": "npm --prefix web run dev"
   },
