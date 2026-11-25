@@ -35,8 +35,9 @@ Copy `.env.example` to `.env` in the repo root and fill it in:
 | `NODE_ENV` | no | | `production` marks the session cookie `Secure` |
 
 ```bash
-npm run dev                 # API on :3001
-npm --prefix web run dev    # Vite on :5173, proxies /api to :3001
+npm run dev                 # API on :3001 and Vite on :5173 together; open http://localhost:5173
+npm run dev:api             # or each one on its own
+npm run dev:web
 ```
 
 ## Build and deploy
