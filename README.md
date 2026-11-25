@@ -4,7 +4,7 @@ A standalone web chat for tabletop RPG dungeon masters, built alongside [Questke
 
 ## How it works
 
-- **Login:** the DM's email and password are sent to Questkeeper's `/api/auth/login`. This service keeps the resulting Questkeeper session inside its own httpOnly cookie (`qa_session`, signed with `JWT_SECRET`, 7 days). The browser never sees the Questkeeper token.
+- **Login:** the DM's email and password are sent to Questkeeper's `/api/auth/login`. This service keeps the resulting Questkeeper session inside its own httpOnly cookie (`qa_session`, signed with `JWT_SECRET`, 7 days). The cookie is signed, not encrypted, so the DM could read their own Questkeeper token from it, but page scripts cannot. If Questkeeper rejects the stored session, the cookie is cleared and the DM signs in again.
 - **Campaigns:** read from Questkeeper as the signed-in DM, so a DM only ever sees and writes their own campaigns.
 - **Chat:** each message sends a compact summary of the campaign (NPCs, quests, last three session recaps) plus recent history to OpenAI using function calling. Threads are stored in MongoDB per DM and campaign.
 - **Suggestions:** an NPC or quest hook is shown with an **Add to campaign** button. Approving it saves it to Questkeeper (an NPC, or a dormant quest). Encounters are text only. Dice are rolled on the server.

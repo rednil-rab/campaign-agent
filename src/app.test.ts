@@ -51,7 +51,7 @@ function fakeQuestkeeper() {
     }
     return new Response('{}', { status: 404 });
   }) as typeof fetch;
-  return { client: new QuestkeeperClient('http://qk.test/api', fetchImpl), saved };
+  return { client: new QuestkeeperClient('http://qk.test/api', fetchImpl), saved, expire: (email: string) => (users[email].token = 'expired') };
 }
 
 class FakeProvider implements ChatProvider {
@@ -103,6 +103,15 @@ describe('agent chat app', () => {
       for (let i = 0; i < 10; i++) await request(app).post('/api/auth/login').send({ email: 'a@x.com', password: 'wrong-pass' });
       const res = await request(app).post('/api/auth/login').send({ email: 'a@x.com', password: 'password-a' });
       expect(res.status).toBe(429);
+    });
+
+    it('ends our session when Questkeeper rejects the stored one, so the web app cannot loop between login and campaigns', async () => {
+      const agent = await signIn(build());
+      qk.expire('a@x.com');
+      const res = await agent.get('/api/chat/campaigns');
+      expect(res.status).toBe(401);
+      expect(String(res.headers['set-cookie'])).toMatch(/qa_session=;/);
+      expect((await agent.get('/api/auth/me')).status).toBe(401);
     });
 
     it('protects chat routes', async () => {
