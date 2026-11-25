@@ -49,7 +49,7 @@ npm run build   # typecheck, bundle the server to dist/, build web/dist
 npm start       # node dist/server.js (set WEB_DIR=web/dist to serve the UI from the same process)
 ```
 
-On Render, create a Web Service from this repo with build command `npm ci && npm run build`, start command `npm start`, and the environment variables above (`NODE_ENV=production`, `WEB_DIR=web/dist`, `QUESTKEEPER_BASE` pointing at your deployed Questkeeper). MongoDB Atlas has a free tier.
+On Render, choose **New → Blueprint** and select this repo; it reads [`render.yaml`](render.yaml). Render sets `NODE_ENV=production` at build time, so the build command is `npm ci --include=dev && npm run build` (TypeScript, esbuild and Vite are dev dependencies). In the dashboard, set `MONGODB_URI` (MongoDB Atlas has a free tier), `OPENAI_API_KEY`, `QUESTKEEPER_BASE` (the `https` URL of your deployed Questkeeper API) and `ALLOWED_EMAILS`. The free plan sleeps after about 15 minutes idle, which also resets the in-memory message limits.
 
 ## Look and feel
 

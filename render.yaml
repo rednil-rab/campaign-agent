@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: dm-assistant
+    runtime: node
+    plan: free
+    # Render sets NODE_ENV=production at build time, so dev dependencies (TypeScript, esbuild, Vite) must be requested.
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: NODE_ENV
+        value: production
+      - key: WEB_DIR
+        value: web/dist
+      - key: JWT_SECRET
+        generateValue: true
+      - key: MONGODB_DB
+        value: questkeeper-agent
+      # Secrets and per-deployment values: set these in the Render dashboard; they stay out of git.
+      - key: MONGODB_URI
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      # https URL of the deployed Questkeeper API, for example https://<questkeeper>.onrender.com/api
+      - key: QUESTKEEPER_BASE
+        sync: false
+      # Comma-separated Questkeeper emails allowed to use the assistant. Strongly recommended.
+      - key: ALLOWED_EMAILS
+        sync: false
