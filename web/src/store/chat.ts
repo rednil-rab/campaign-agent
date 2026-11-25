@@ -20,6 +20,7 @@ interface ChatState {
   setMessages: (messages: Message[]) => void;
   addMessage: (message: Message) => void;
   setLoading: (loading: boolean) => void;
+  clearMessages: () => void;
 }
 
 export const useChatStore = create<ChatState>((set) => ({
@@ -30,4 +31,5 @@ export const useChatStore = create<ChatState>((set) => ({
   setMessages: (messages: Message[]) => set({ messages }),
   addMessage: (message: Message) => set((state) => ({ messages: [...state.messages, message] })),
   setLoading: (loading: boolean) => set({ loading }),
+  clearMessages: () => set({ messages: [] }),
 }));
