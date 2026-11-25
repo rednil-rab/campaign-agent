@@ -33,12 +33,12 @@ export const MessageList: React.FC<{ campaignId: string }> = ({ campaignId }) =>
   return (
     <div className="message-list">
       {messages.length === 0 && (
-        <div className="empty-state">
+        <div className="empty-state muted">
           <p>Ask for an NPC, an encounter, a quest hook, or a dice roll.</p>
         </div>
       )}
       {messages.map((m) => (
-        <div key={m.id} className={`message message-${m.role}`}>
+        <div key={m.id} className={`message message--${m.role}`}>
           <div className="message-content">{m.content}</div>
           {m.action && (
             <ActionCard

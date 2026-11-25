@@ -37,10 +37,10 @@ export const ChatPage: React.FC = () => {
 
   return (
     <div className="chat-page">
-      <header>
-        <Link to="/campaigns">← Campaigns</Link>
+      <header className="chat-page__header">
+        <Link className="button button--ghost" to="/campaigns">← Campaigns</Link>
       </header>
-      {loading && <p className="empty-state">Loading…</p>}
+      {loading && <p className="muted empty-state">Loading…</p>}
       {error && <p role="alert" className="error empty-state">{error}</p>}
       {!loading && !error && (
         <>

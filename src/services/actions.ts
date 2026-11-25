@@ -5,6 +5,27 @@ const str = (v: unknown, max: number): string => (typeof v === 'string' ? v.trim
 const list = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []);
 const section = (label: string, value: string) => (value ? `${label}: ${value}` : '');
 
+const FIELDS: Record<ToolName, { text: string[]; lists: string[] }> = {
+  generate_npc: { text: ['name', 'role', 'location', 'disposition', 'appearance', 'personality', 'motivation'], lists: [] },
+  generate_encounter: { text: ['name', 'difficulty', 'terrain'], lists: ['enemies', 'treasures'] },
+  suggest_quest_hook: { text: ['title', 'summary', 'reward'], lists: ['complications'] },
+  roll_dice: { text: ['dice', 'reason'], lists: [] },
+};
+
+/** Keeps only the known fields of a model-supplied payload, with their expected types and sizes. */
+export function sanitizePayload(type: ToolName, payload: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const key of FIELDS[type].text) {
+    const value = str(payload[key], 2000);
+    if (value) out[key] = value;
+  }
+  for (const key of FIELDS[type].lists) {
+    const value = list(payload[key]).slice(0, 20).map((x) => x.trim().slice(0, 300)).filter(Boolean);
+    if (value.length) out[key] = value;
+  }
+  return out;
+}
+
 /** Human-readable text for what the assistant suggested. */
 export function describeAction(type: ToolName, p: Record<string, unknown>): string {
   const lines =

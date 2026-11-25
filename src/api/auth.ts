@@ -17,6 +17,10 @@ export function createAuthRouter(config: Config, questkeeper: QuestkeeperClient)
       throw new HttpError(400, 'Email and password are required');
     }
     const { user, token } = await questkeeper.login(email.trim().toLowerCase(), password);
+    // Checked after Questkeeper confirms the password, so the list is not revealed to guessers.
+    if (config.allowedEmails.length > 0 && !config.allowedEmails.includes(user.email.toLowerCase())) {
+      throw new HttpError(403, 'This account is not allowed to use the assistant');
+    }
     res.cookie(SESSION_COOKIE, signSession({ userId: user.id, email: user.email, qkToken: token }, config.jwtSecret), {
       ...cookieOptions,
       maxAge: SESSION_MAX_AGE_MS,

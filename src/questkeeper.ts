@@ -29,7 +29,7 @@ export class QuestkeeperClient {
     if (rest.body) headers['Content-Type'] = 'application/json';
     let res: Response;
     try {
-      res = await this.fetchImpl(`${this.base}${path}`, { ...rest, headers, signal: AbortSignal.timeout(10000) });
+      res = await this.fetchImpl(`${this.base}${path}`, { ...rest, headers, redirect: 'error', signal: AbortSignal.timeout(10000) });
     } catch {
       throw new HttpError(502, 'Could not reach Questkeeper');
     }

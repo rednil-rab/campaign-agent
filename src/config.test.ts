@@ -83,4 +83,26 @@ describe('loadConfig', () => {
     
     expect(() => loadConfig(env)).toThrow('OPENAI_API_KEY');
   });
+
+  describe('cost and transport safety', () => {
+    const env = { JWT_SECRET: 'a'.repeat(32), MONGODB_URI: 'mongodb://localhost:27017', OPENAI_API_KEY: 'sk-test' };
+
+    it('parses ALLOWED_EMAILS as a trimmed, lower-cased list and defaults to no restriction', () => {
+      expect(loadConfig(env).allowedEmails).toEqual([]);
+      expect(loadConfig({ ...env, ALLOWED_EMAILS: ' A@X.com, b@x.com ,, ' }).allowedEmails).toEqual(['a@x.com', 'b@x.com']);
+    });
+
+    it('has a global daily cap that can be configured', () => {
+      expect(loadConfig(env).globalDailyMessageLimit).toBe(500);
+      expect(loadConfig({ ...env, GLOBAL_DAILY_MESSAGE_LIMIT: '20' }).globalDailyMessageLimit).toBe(20);
+      expect(() => loadConfig({ ...env, GLOBAL_DAILY_MESSAGE_LIMIT: '0' })).toThrow('GLOBAL_DAILY_MESSAGE_LIMIT');
+    });
+
+    it('requires https for a remote Questkeeper in production', () => {
+      const prod = { ...env, NODE_ENV: 'production' };
+      expect(() => loadConfig({ ...prod, QUESTKEEPER_BASE: 'http://qk.example.com/api' })).toThrow('https');
+      expect(loadConfig({ ...prod, QUESTKEEPER_BASE: 'https://qk.example.com/api' }).questkeeperBase).toBe('https://qk.example.com/api');
+      expect(loadConfig({ ...prod, QUESTKEEPER_BASE: 'http://localhost:3000/api' }).questkeeperBase).toBe('http://localhost:3000/api');
+    });
+  });
 });
